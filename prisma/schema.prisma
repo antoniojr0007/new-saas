@@ -14,39 +14,73 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            String    @id
-  name          String
-  email         String
-  emailVerified Boolean
-  image         String?
-  role          String?
-  banned        Boolean?
-  banReason     String?
-  banExpires    DateTime?
-  createdAt     DateTime
-  updatedAt     DateTime
-  sessions      Session[]
-  accounts      Account[]
+enum Role {
+  super_admin
+  admin
+  user
+}
 
-  @@unique([email])
-  @@map("user")
+enum Certidao {
+  NASCIMENTO
+  CASAMENTO
+  DIVORCIO
+  OBITO
+}
+
+enum BanReason {
+  SPAM
+  ABUSE
+  INAPPROPRIATE_CONTENT
+  OTHER
+}
+
+enum Status {
+  PENDING_APPROVED
+  ACTIVE
+  INACTIVE
+  EXCLUDED
+  PENDING_EXCLUDED
+}
+
+enum StatusMemberFamily {
+  ACTIVE
+  INACTIVE
+  DECEASED
+  EXCLUDED
+  BLOCKED
+}
+
+model User {
+  id              String         @id
+  name            String
+  email           String
+  emailVerified   Boolean        @default(false)
+  username        String         @unique
+  displayUsername String?
+  image           String?
+  role            Role           @default(user)
+  banned          Boolean?
+  banReason       BanReason?
+  banDetails      String?
+  banExpires      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now())
+  sessions        Session[]
+  accounts        Account[]
+  familyMembers   FamilyMember[]
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime
-  updatedAt DateTime
-  ipAddress String?
-  userAgent String?
+  id             String   @id
+  expiresAt      DateTime
+  token          String   @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now())
+  ipAddress      String?
+  userAgent      String?
   impersonatedBy String?
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([token])
-  @@map("session")
+  userId         String
+  user           User     @relation(fields: [userId], references: [id])
 }
 
 model Account {
@@ -54,7 +88,6 @@ model Account {
   accountId             String
   providerId            String
   userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   accessToken           String?
   refreshToken          String?
   idToken               String?
@@ -62,19 +95,118 @@ model Account {
   refreshTokenExpiresAt DateTime?
   scope                 String?
   password              String?
-  createdAt             DateTime
-  updatedAt             DateTime
-
-  @@map("account")
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @default(now())
+  user                  User      @relation(fields: [userId], references: [id])
 }
 
 model Verification {
-  id         String    @id
+  id         String   @id
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime?
-  updatedAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now())
+}
 
-  @@map("verification")
+model Family {
+  id            String         @id
+  vaga          Int            @unique
+  pontuacao     Int            @default(0)
+  faltas        Int            @default(0)
+  isActive      Boolean        @default(true)
+  status        Status         @default(PENDING_APPROVED)
+  statusDetails String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now())
+  members       FamilyMember[]
+}
+
+model Contact {
+  id              String       @id
+  email           String?
+  emailSecundario String?
+  phone           String?
+  cellPhone       String?
+  facebook        String?
+  instagram       String?
+  telegram        String?
+  whatsapp        String?
+  memberId        String
+  member          FamilyMember @relation(fields: [memberId], references: [id])
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now())
+  Company         Company?     @relation(fields: [companyId], references: [id])
+  companyId       String?
+}
+
+model Address {
+  id           String       @id
+  street       String
+  number       String
+  complement   String?
+  neighborhood String
+  city         String
+  state        String
+  zipCode      String
+  memberId     String
+  member       FamilyMember @relation(fields: [memberId], references: [id])
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @default(now())
+  Company      Company?     @relation(fields: [companyId], references: [id])
+  companyId    String?
+}
+
+model FamilyMember {
+  id            String             @id
+  name          String
+  birthDate     DateTime
+  status        StatusMemberFamily @default(ACTIVE)
+  statusDetails String?
+  familyId      String
+  userId        String?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @default(now())
+  family        Family             @relation(fields: [familyId], references: [id])
+  user          User?              @relation(fields: [userId], references: [id])
+  contacts      Contact[]
+  addresses     Address[]
+  documents     Document[]
+}
+
+model Document {
+  id                String       @id
+  cpf               String?      @unique
+  rgCin             String?      @unique
+  rgOrgaoEmissor    String?
+  rgUf              String?
+  rgDataEmissao     DateTime?
+  cnh               String?      @unique
+  cnhCategoria      String?
+  cnhDataEmissao    DateTime?
+  cnhDataVencimento DateTime?
+  cnhOrgaoEmissor   String?
+  cnhUf             String?
+  cartaoSus         String?      @unique
+  tituloEleitor     String?      @unique
+  numeroCertidao    String?      @unique
+  typeCertidao      Certidao
+  memberId          String
+  member            FamilyMember @relation(fields: [memberId], references: [id])
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @default(now())
+}
+
+model Company {
+  id                  String    @id
+  razaoSocial         String?   @unique @map("razao_social")
+  nomeFantasia        String?   @unique @map("nome_fantasia")
+  cnpj                String    @unique
+  inscricaoEstadual   String?   @unique @map("inscricao_estadual")
+  inscricaoMunicipal  String?   @unique @map("inscricao_municipal")
+  alvaraFuncionamento String?   @unique
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @default(now())
+  contacts            Contact[]
+  addresses           Address[]
 }

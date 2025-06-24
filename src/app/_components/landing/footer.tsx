@@ -1,4 +1,4 @@
-import { Home,  } from "lucide-react";
+import { Home, LogIn } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,7 @@ export function Footer() {
               className="w-fit bg-emerald-600 hover:bg-emerald-700 dark:text-white"
             >
               <Link href="/sign-in">
-                <Login className="mr-2 h-4 w-4" />
+                <LogIn className="mr-2 h-4 w-4" />
                 Fazer Login
               </Link>
             </Button>
